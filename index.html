@@ -430,12 +430,12 @@
           if Document.getElementById("stage-option-#{ stage_id + 1 }") == JS::Null
             # <option value="1" id="stage-option-1">Stage: 1</option>
             opt = Document.createElement("option")
-            opt[:selected] = "true"
             opt[:value] = "#{ stage_id + 1 }"
             opt[:id] = "stage-option-#{ stage_id + 1 }"
             opt[:innerText] = "Stage: #{ stage_id + 1 }"
             Document.getElementById("stage-select").append(opt)
           end
+          Document.getElementById("stage-select")[:selectedIndex] = stage_id
 
           reached_stage = Window[:localStorage][:reached_stage]
           reached_stage = 0 if reached_stage == JS::Undefined

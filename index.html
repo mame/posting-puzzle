@@ -1,0 +1,634 @@
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8" />
+    <title>Posting Puzzle</title>
+    <meta name="description" content="The puzzle is to stamp letters and send them to the mailbox." />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Posting Puzzle" />
+    <meta property="og:url" content="https://mame.github.io/posting-puzzle/" />
+    <meta property="og:description" content="The puzzle is simply to stamp letters and send them to the mailbox." />
+    <meta property="og:site_name" content="Posting Puzzle" />
+    <meta property="og:image" content="https://mame.github.io/posting-puzzle/ogp.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="apple-touch-icon" sizes="180x180" href="https://mame.github.io/posting-puzzle/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="https://mame.github.io/posting-puzzle/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="https://mame.github.io/posting-puzzle/favicon-16x16.png">
+    <link rel="icon" href="https://mame.github.io/posting-puzzle/favicon.ico">
+    <link rel="mask-icon" href="https://mame.github.io/posting-puzzle/safari-pinned-tab.svg" color="#5bbad5">
+    <meta name="msapplication-TileColor" content="#da532c">
+    <meta name="theme-color" content="#ffffff">
+    <style>
+      * { padding: 0; margin: 0; }
+      html {
+        overflow: hidden;
+        touch-action: manipulation;
+      }
+      body {
+        background: #ffffff;
+        overflow: hidden;
+        user-select: none;
+        font-family: sans-serif;
+        font-size: 5vmin;
+        color: #666666;
+      }
+      div.body {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-around;
+        height: 100%;
+        padding: 0% 5%;
+      }
+
+      div.nav {
+        display: flex;
+        justify-content: space-between;
+      }
+      div.nav select {
+        font-size: inherit;
+        color: inherit;
+      }
+
+      div.main {
+        display: flex;
+        align-items: center;
+      }
+
+      div#lanes.ready {
+        display: flex;
+        justify-content: space-between;
+        width: 100%;
+      }
+
+      div.lane {
+        flex-grow: 1;
+        display: flex;
+        padding: 0px 1vh;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        align-items: center;
+        height: 18vh;
+      }
+      div.main div.lane {
+        background: #f3f3f3;
+        border-top: 1px solid #666666;
+        border-bottom: 1px solid #666666;
+      }
+      div#lanes.ready div.lane {
+        background: #f3fff3;
+        box-shadow: 0.2vh 0.2vh 0vh rgba(0, 0.5, 0, 0.3);
+        border-radius: 0.5vh;
+        position: relative;
+        transition: all 0.3s ease-in;
+      }
+      div#lanes.ready div.lane.active {
+        background: #c2dfc2;
+      }
+      div#lanes.ready div.lane.active::after {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 20vh;
+        height: 20vh;
+        margin-top: -10vh;
+        margin-left: -10vh;
+        content: "";
+        background: #ffffff;
+        border-radius: 100%;
+        opacity: 0;
+        animation: ripple 0.3s 1 ease-out;
+      }
+      @keyframes ripple {
+        0% {
+          opacity: 1;
+          transform: scale(0);
+        }
+        100% {
+          opacity: 0;
+          transform: scale(1);
+        }
+      }
+      div#lanes.ready span#loading {
+        display: none;
+      }
+      div#lanes.loading {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      div#lanes.loading span#loading {
+        display: block;
+      }
+      div#lanes.loading div.lane {
+        display: none;
+      }
+
+      span.pair {
+        display: flex;
+        flex-direction: column;
+        flex-wrap: nowrap;
+        justify-content: center;
+        flex-shrink: 1;
+        max-width: 9vh;
+        width: 100%;
+        position: relative;
+        flex-basis: auto;
+        animation: pair-start 1s 1 forwards;
+      }
+      span.item-wrapper {
+        animation: item-wrapper-start 1s 1 forwards;
+        position: relative;
+      }
+      span.item {
+        display: inline-block;
+        width: 100%;
+        aspect-ratio: 1;
+        max-width: 7vh;
+        background-size: 100%;
+      }
+      span.item[data-type="a"] {
+        /* https://icooon-mono.com/12533-%e3%83%a1%e3%83%bc%e3%83%ab%e3%81%ae%e7%84%a1%e6%96%99%e3%82%a2%e3%82%a4%e3%82%b3%e3%83%b3%e3%81%9d%e3%81%ae8/ */
+        background-image: url("mail.png");
+      }
+      span.item[data-type="b"] {
+        /* https://icooon-mono.com/14512-%e5%88%a4%e5%ad%90%e3%82%a2%e3%82%a4%e3%82%b3%e3%83%b33/ */
+        background-image: url("stamp.png");
+      }
+      span.ui {
+        position: absolute;
+        z-index: 2;
+      }
+      span#box {
+        width: 15vh;
+        height: 15vh;
+        background-size: 100%;
+        /* https://icooon-mono.com/14675-%e3%83%a1%e3%83%bc%e3%83%ab%e3%83%9c%e3%83%83%e3%82%af%e3%82%b9%e3%82%a2%e3%82%a4%e3%82%b3%e3%83%b31/ */
+        background-image: url("box.png");
+      }
+      span#info {
+        width: 8vh;
+        height: 8vh;
+        background-size: 100%;
+        /* https://icooon-mono.com/11926-%e6%83%85%e5%a0%b1%e3%82%a2%e3%82%a4%e3%82%b3%e3%83%b3/ */
+        background-image: url("info.png");
+      }
+      span#undo {
+        width: 8vh;
+        height: 8vh;
+        background-size: 100%;
+        /* https://icooon-mono.com/12604-u%e3%82%bf%e3%83%bc%e3%83%b3%e7%9f%a2%e5%8d%b0-1/ */
+        background-image: url("undo.png");
+      }
+      span#undo.active {
+        animation: undo-active 2s 1 forwards;
+      }
+      @keyframes undo-active {
+        0% { }
+        50% { transform: scale(1); }
+        60% { transform: scale(1.2) rotate(20deg); }
+        70% { transform: scale(1.2) rotate(-20deg); }
+        80% { transform: scale(1.2) rotate(20deg); }
+        90% { transform: scale(1.2) rotate(-20deg); }
+        100% { transform: scale(1); }
+      }
+      span#loading {
+        width: 15vh;
+        height: 15vh;
+        background-size: 100%;
+        /* https://icooon-mono.com/12678-%e3%83%ad%e3%83%bc%e3%83%87%e3%82%a3%e3%83%b3%e3%82%b0%e4%b8%ad%e3%81%ae%e3%82%a2%e3%82%a4%e3%82%b3%e3%83%b34/ */
+        background-image: url("loading.png");
+        animation: rotate 3s linear infinite;
+      }
+      @keyframes rotate {
+        0% { transform: rotate(0); }
+        100% { transform: rotate(360deg); }
+      }
+
+      @keyframes pair-start {
+        0% { width: 0%; }
+        100% { width: 100%; }
+      }
+      @keyframes item-wrapper-start {
+        0% { transform: translateX(100vw); opacity: 0; }
+        100% { transform: translateX(0px); opacity: 1; }
+      }
+
+      span.pair.posted {
+        animation: shrink-pair 2s 1 forwards;
+      }
+      span.pair.posted span.upper {
+        animation: upper-posted 2s 1 forwards;
+      }
+      span.pair.posted span.lower {
+        animation: lower-posted 2s 1 forwards;
+      }
+      span.pair.posted span.ui {
+        /* https://icooon-mono.com/12544-%e3%83%a1%e3%83%bc%e3%83%ab%e3%81%ae%e7%84%a1%e6%96%99%e3%82%a2%e3%82%a4%e3%82%b3%e3%83%b3%e3%81%9d%e3%81%ae19/ */
+        background-image: url("mail-checked.png");
+        animation: ui-posted 2s 1 forwards;
+      }
+      @keyframes shrink-pair {
+        0% { width: 100%; }
+        75% { width: 100%; }
+        100% { width: 0%; }
+      }
+      @keyframes upper-posted {
+        0% { transform: translateY(0px); opacity: 1; }
+        50% { transform: translateY(0px); opacity: 1; }
+        75% { transform: translateY(50%); opacity: 0; }
+        100% { opacity: 0; }
+      }
+      @keyframes lower-posted {
+        0% { transform: translateY(0px); opacity: 1; }
+        50% { transform: translateY(0px); opacity: 1; }
+        75% { transform: translateY(-50%); opacity: 0; }
+        100% { opacity: 0; }
+      }
+      @keyframes ui-posted {
+        0% { opacity: 0; }
+        50% { opacity: 0; }
+        75% { transform: translateX(0%); opacity: 1; }
+        100% { transform: translateX(-200%); opacity: 0; }
+      }
+
+      span.pair.not-posted span.upper {
+        animation: upper-not-posted 2s 1 forwards;
+      }
+      span.pair.not-posted span.lower {
+        animation: lower-not-posted 2s 1 forwards;
+      }
+      span.pair.not-posted span.ui {
+        /* https://icooon-mono.com/11913-%e3%82%84%e3%82%84%e5%a4%aa%e3%81%84%e3%83%90%e3%83%84%e3%81%ae%e3%82%a2%e3%82%a4%e3%82%b3%e3%83%b3/ */
+        background-image: url("x.png");
+        animation: not-posted 2s 1 forwards;
+      }
+      @keyframes upper-not-posted {
+        0% { transform: translateY(0px); }
+        50% { transform: translateY(0px); }
+        100% { transform: translateY(-20%); }
+      }
+      @keyframes lower-not-posted {
+        0% { transform: translateY(0px); }
+        50% { transform: translateY(0px); }
+        100% { transform: translateY(20%); }
+      }
+      @keyframes not-posted {
+        0% { opacity: 0; }
+        50% { opacity: 0; }
+        100% { opacity: 1; }
+      }
+
+      div.modal {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        background-color: rgba(0, 0, 0, 0.6);
+        z-index: 10;
+        font-size: 3vh;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 1s ease 0s;
+      }
+      div.modal[data-active="true"] {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      div.modal div.modal-inner {
+        background: #ffffff;
+        position: absolute;
+        padding: 0.5em 0.5em;
+        top: 50%;
+        left: 50%;
+        max-width: 80vw;
+        max-height: 80vh;
+        transform: translateX(-50%) translateY(-50%);
+        font-size: 1.2em;
+        overflow-y: auto;
+      }
+      div#clear-modal {
+        text-align: center;
+      }
+      ul {
+        font-size: 0.8em;
+        margin: 0em 0em 1em 1em;
+      }
+      span.button {
+        display: block;
+        margin: 1em 0em 0em 0em;
+        padding: 0.2em 1em;
+        background-color: #cdebcd;
+        border-radius: 0.2em;
+        font-size: 0.7em;
+        text-align: center;
+      }
+
+      @media (orientation: landscape) {
+        div#lanes {
+          flex-direction: row;
+          height: 20vh;
+        }
+        div.lane {
+          margin: 0vh 1vh;
+        }
+      }
+      @media (orientation: portrait) {
+        div#lanes {
+          flex-direction: column;
+          height: 58vh;
+        }
+        div.lane {
+          margin: 1vh 0vh;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="body">
+      <div class="nav">
+        <p>Posting Puzzle</p>
+        <p>
+          <select id="stage-select">
+            <option value="1" id="stage-option-1">Stage: 1</option>
+          </select>
+        </p>
+      </div>
+      <div id="" class="main">
+        <span id="box"></span>
+        <div id="main-lane" class="lane">
+        </div>
+      </div>
+      <div id="lanes" class="loading">
+        <span id="loading"></span>
+        <div id="lane1" class="lane"></div>
+        <div id="lane2" class="lane"></div>
+        <div id="lane3" class="lane"></div>
+      </div>
+      <div class="nav">
+        <span id="info"></span>
+        <span id="undo"></span>
+      </div>
+      <div id="info-modal" class="modal" data-active="false">
+        <div class="modal-inner">
+          <p>Rule:</p>
+          <ul>
+            <li>Please match letters with stamps and post them into the mailbox.</li>
+            <li>You will complete the stage if you empty the inbox of all unsent letters and unused stamps.</li>
+            <li>There are six stages in all.</li>
+          </ul>
+          <p>Credit:</p>
+          <ul>
+            <li>This puzzle is written in <a href="https://github.com/ruby/ruby.wasm">ruby.wasm</a>, without any direct use of JavaScript.</li>
+            <li>The icons are from <a href="https://icooon-mono.com/">ICOOON MONO</a></li>
+            <li>The source code is available in <a href="https://github.com/mame/posting-puzzle">GitHub: mame/posting-puzzle</a></li>
+          </ul>
+          <p><span class="button">OK</span></p>
+        </div>
+      </div>
+      <div id="clear-modal" class="modal" data-active="false">
+        <div class="modal-inner">
+          <p id="clear-message">Clear!</p>
+          <p><span id="clear-button-message" class="button">Next Stage</span></p>
+        </div>
+      </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/ruby-head-wasm-wasi@0.4.0-2022-11-04-a/dist/browser.script.iife.js"></script>
+    <script type="text/ruby">
+      require "js"
+
+      Window = JS.global[:window]
+      Document = JS.global[:document]
+
+      class Game
+        def initialize
+          @stage_id = 0
+          @lane_u = ""
+          @lane_l = ""
+          @state = :playing # :playing | :stuck | :clear
+          @history = []
+
+          reached_stage = Window[:localStorage][:reached_stage]
+          reached_stage = 0 if reached_stage == JS::Undefined
+          (0..reached_stage.to_s.to_i).each {|stage_id| unlock_stage(stage_id) }
+
+          current_stage = Window[:localStorage][:current_stage]
+          current_stage = 0 if current_stage == JS::Undefined
+          set_stage(current_stage.to_s.to_i)
+        end
+
+        StageData = [
+          [ ["a","bb"], ["aaa","b"], ["aa","aa"] ],
+          [ ["a","abbb"], ["a","ba"], ["aba","b"] ],
+          [ ["abb","b"], ["b","baa"], ["a","aa"] ],
+          [ ["abb","b"], ["b","baa"], ["a","a"] ],
+          [ ["baab","a"], ["a","bba"], ["ab","b"] ],
+          [ ["ab", "a"], ["b", "aab"], ["bba", "b"] ],
+        ]
+
+        def unlock_stage(stage_id)
+          if Document.getElementById("stage-option-#{ stage_id + 1 }") == JS::Null
+            # <option value="1" id="stage-option-1">Stage: 1</option>
+            opt = Document.createElement("option")
+            opt[:selected] = "true"
+            opt[:value] = "#{ stage_id + 1 }"
+            opt[:id] = "stage-option-#{ stage_id + 1 }"
+            opt[:innerText] = "Stage: #{ stage_id + 1 }"
+            Document.getElementById("stage-select").append(opt)
+          end
+
+          reached_stage = Window[:localStorage][:reached_stage]
+          reached_stage = 0 if reached_stage == JS::Undefined
+          if reached_stage.to_s.to_i < stage_id
+            Window[:localStorage][:reached_stage] = stage_id.to_s
+          end
+        end
+
+        def set_stage(stage_id)
+          @stage_id = stage_id
+          @lane_u = ""
+          @lane_l = ""
+          @state = :playing
+          @history = []
+
+          unlock_stage(stage_id)
+          Window[:localStorage][:current_stage] = stage_id.to_s
+
+          main_lane = Document.getElementById("main-lane")
+          empty_lane(main_lane)
+
+          StageData[@stage_id].each_with_index do |(lane_u, lane_l), lane_id|
+            lane = Document.getElementById("lane#{ lane_id + 1 }")
+            empty_lane(lane)
+            [lane_u.size, lane_l.size].max.times do |i|
+              lane.appendChild(create_pair(lane_u[i], lane_l[i]))
+            end
+          end
+        end
+
+        def lane_pushed(lane_id)
+          return unless @state == :playing
+          lane = Document.getElementById("lane#{ lane_id + 1 }")
+          lane[:classList].add("active")
+          @history << lane_id
+          main_lane = Document.getElementById("main-lane")
+          pairs = main_lane[:children]
+          [@lane_u, @lane_l].each_with_index do |lane, y|
+            StageData[@stage_id][lane_id][y].each_char do |type|
+              pairs[:length].to_s.to_i
+              if pairs[:length].to_s.to_i <= lane.size
+                c = create_pair(nil, nil)
+                main_lane.appendChild(c)
+                pairs = main_lane[:children]
+              end
+
+              item = pairs[lane.size][:children][y * 2]
+              item[:children][0][:dataset][:type] = type
+              item[:classList].add("item-wrapper")
+
+              if @state == :playing
+                opposite_item = pairs[lane.size][:children][(1 - y) * 2]
+                opposite_type = opposite_item[:children][0][:dataset][:type]
+                if opposite_type == JS::Undefined
+                  # nothing to do
+                elsif opposite_type.to_s != type
+                  pairs[lane.size][:classList].add("posted")
+                else
+                  pairs[lane.size][:classList].add("not-posted")
+                  Document.getElementById("undo")[:classList].add("active")
+                  @state = :stuck
+                end
+              end
+
+              lane << type
+            end
+          end
+
+          if @state == :playing && @lane_u.size == @lane_l.size
+            @state = :clear
+            pairs[@lane_u.size - 1][:children][1].addEventListener("animationend") do
+              Document.getElementById("clear-modal")[:dataset][:active] = "true"
+              if StageData[@stage_id + 1]
+                Document.getElementById("clear-message")[:innerText] = "Clear!"
+                Document.getElementById("clear-button-message")[:innerText] = "Next Stage"
+              else
+                Document.getElementById("clear-message")[:innerText] = "All clear!"
+                Document.getElementById("clear-button-message")[:innerText] = "OK"
+              end
+            end
+          end
+        end
+
+        def undo_pushed
+          return unless @state != :clear
+          @state = :playing
+          return if @history.empty?
+          main_lane = Document.getElementById("main-lane")
+          pairs = main_lane[:children]
+          lane_id = @history.pop
+          [@lane_u, @lane_l].each_with_index do |lane, y|
+            StageData[@stage_id][lane_id][y].each_char do |type|
+              lane[-1, 1] = ""
+              item = pairs[lane.size][:children][y * 2]
+              item[:children][0].removeAttribute("data-type")
+              item[:classList].remove("item-wrapper")
+              pairs[lane.size][:classList].remove("posted")
+              pairs[lane.size][:classList].remove("not-posted")
+            end
+          end
+          len = [@lane_u.size, @lane_l.size].max
+          while pairs[:length].to_s.to_i > len
+            main_lane.removeChild(pairs[len])
+            pairs = main_lane[:children]
+          end
+        end
+
+        def clear_pushed
+          set_stage(@stage_id + 1) if StageData[@stage_id + 1]
+          Document.getElementById("clear-modal")[:dataset][:active] = "false"
+        end
+
+        def stage_changed
+          set_stage(Document.getElementById("stage-select")[:value].to_s.to_i - 1)
+        end
+
+        private
+
+        def create_item(y, type)
+          # <span class="item-wrapper">
+          #   <span class="item" data-type="a"></span>
+          # </span>
+          wrapper = Document.createElement("span")
+          wrapper[:classList].add("item-wrapper") if type
+          content = Document.createElement("span")
+          content[:classList].add("item")
+          content[:classList].add(y.to_s)
+          content[:dataset][:type] = type if type
+          wrapper.appendChild(content)
+          wrapper
+        end
+
+        def create_pair(upper, lower)
+          # <span class="pair">
+          #   ${ create_item }
+          #   <span class="item ui"></span>
+          #   ${ create_item }
+          # </span>
+          pair = Document.createElement("span")
+          pair[:classList].add("pair")
+          pair.appendChild(create_item(:upper, upper))
+          ui = Document.createElement("span")
+          ui[:classList].add("item")
+          ui[:classList].add("ui")
+          pair.appendChild(ui)
+          pair.appendChild(create_item(:lower, lower))
+          pair
+        end
+
+        def empty_lane(lane)
+          lane.removeChild(lane[:firstChild]) while lane[:firstChild] != JS::Null
+        end
+      end
+
+      game = Game.new
+
+      3.times do |lane_id|
+        lane = Document.getElementById("lane#{ lane_id + 1 }")
+        lane.addEventListener("click") { game.lane_pushed(lane_id) }
+        lane.addEventListener("animationend") { lane[:classList].remove("active") }
+      end
+
+      Document.getElementById("info").addEventListener("click") do
+        Document.getElementById("info-modal")[:dataset][:active] = "true"
+      end
+
+      undo = Document.getElementById("undo")
+      undo.addEventListener("click") { game.undo_pushed }
+      undo.addEventListener("animationend") { undo[:classList].remove("active") }
+
+      Document.getElementById("info-modal").addEventListener("click") do
+        Document.getElementById("info-modal")[:dataset][:active] = "false"
+      end
+
+      Document.getElementById("clear-modal").addEventListener("click") do
+        game.clear_pushed
+      end
+
+      Document.getElementById("stage-select").addEventListener("change") do
+        game.stage_changed
+      end
+
+      Document.addEventListener("keydown") do |ev|
+        case ev[:key].to_s
+        when "1" then game.lane_pushed(0)
+        when "2" then game.lane_pushed(1)
+        when "3" then game.lane_pushed(2)
+        when "Backspace" then game.undo_pushed
+        end
+      end
+
+      Document.getElementById("lanes")[:classList].remove("loading")
+      Document.getElementById("lanes")[:classList].add("ready")
+    </script>
+  </body>
+</html>
